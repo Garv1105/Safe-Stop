@@ -23,13 +23,14 @@ py scripts/make_street_preview.py
 
 ## Nicer base map (optional)
 
-Uses OpenFreeMap (no key) by default. For MapTiler's data-visualisation styles, get a free key at maptiler.com and create `.env.local`:
+Uses OpenFreeMap (no key) by default. For MapTiler, get a free key at maptiler.com and create `.env.local`:
 
 ```
 VITE_MAPTILER_KEY=your_key_here
+VITE_MAPTILER_STYLE=streets-v4       # optional; e.g. dataviz-v4. Dark mode adds "-dark".
 ```
 
-Restart `npm run dev` after adding it. Without a key, or if MapTiler is unreachable, the app still works.
+Restart `npm run dev` after adding it. If the key is restricted to certain origins, allow `localhost` (and your deploy domain). If MapTiler fails, the map falls back to OpenFreeMap, then to a plain offline background.
 
 Police KML files go in `scripts/input/` (already downloaded from data.opencity.in).
 

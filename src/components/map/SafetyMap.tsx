@@ -6,7 +6,7 @@ import { PathLayer, ScatterplotLayer } from '@deck.gl/layers'
 import type { Layer, PickingInfo } from '@deck.gl/core'
 import { cellToLatLng } from 'h3-js'
 import type { Map as MapLibreMap } from 'maplibre-gl'
-import { fallbackStyle, polishStyle, styleUrl } from '../../lib/mapStyle'
+import { polishStyle, styleChain } from '../../lib/mapStyle'
 import { BAND_INFO, lowSegments, scoreColor, scoreLabel } from '../../lib/scoring'
 import type { AppData, Band, Cell, RoutePair } from '../../lib/types'
 
@@ -49,7 +49,11 @@ export default function SafetyMap(p: Props) {
   const mapRef = useRef<MapRef>(null)
   const darkRef = useRef(p.dark)
   darkRef.current = p.dark
-  const [styleFailed, setStyleFailed] = useState(false)
+  // index into styleChain: steps down when a style can't be downloaded
+  const [styleLevel, setStyleLevel] = useState(0)
+  const chain = styleChain(p.dark)
+  const lastLevel = chain.length - 1
+  const stepDown = () => setStyleLevel((l) => Math.min(l + 1, lastLevel))
   const [loaded, setLoaded] = useState(false)
   // Hexes are drawn under the base map's roads and labels so streets stay readable.
   const [beforeId, setBeforeId] = useState<string | undefined>()
@@ -63,12 +67,12 @@ export default function SafetyMap(p: Props) {
   // Fall back to a plain background only if the style itself never arrives (offline),
   // not just because tiles are slow.
   useEffect(() => {
-    if (loaded || styleFailed) return
+    if (loaded || styleLevel === lastLevel) return
     const t = setTimeout(() => {
-      if (!mapRef.current?.getMap().getStyle()?.layers?.length) setStyleFailed(true)
+      if (!mapRef.current?.getMap().getStyle()?.layers?.length) stepDown()
     }, 15000)
     return () => clearTimeout(t)
-  }, [loaded, styleFailed])
+  }, [loaded, styleLevel, lastLevel]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Zoom to the chosen route.
   useEffect(() => {
@@ -266,7 +270,7 @@ export default function SafetyMap(p: Props) {
     <Map
       ref={mapRef}
       initialViewState={INITIAL_VIEW}
-      mapStyle={styleFailed ? fallbackStyle(p.dark) : styleUrl(p.dark)}
+      mapStyle={chain[Math.min(styleLevel, lastLevel)]}
       canvasContextAttributes={{ antialias: true }}
       onLoad={(e) => {
         setLoaded(true)
@@ -275,7 +279,7 @@ export default function SafetyMap(p: Props) {
         map.on('style.load', () => polishStyle(map, darkRef.current)) // after the dark/light toggle
         if (import.meta.env.DEV) Object.assign(window, { __map: e.target }) // used by the demo test script only
       }}
-      onError={(e) => !e.target.getStyle()?.layers?.length && setStyleFailed(true)}
+      onError={(e) => !e.target.getStyle()?.layers?.length && stepDown()}
       onStyleData={onStyleData}
       onMoveEnd={(e) => p.onCenterChange([e.viewState.longitude, e.viewState.latitude])}
       minZoom={11}
