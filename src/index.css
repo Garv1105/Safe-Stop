@@ -1,0 +1,98 @@
+@import "tailwindcss";
+@import "maplibre-gl/dist/maplibre-gl.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-display: "Bricolage Grotesque", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-brand-50: #eef2ff;
+  --color-brand-100: #e0e7ff;
+  --color-brand-500: #6366f1;
+  --color-brand-600: #4f46e5;
+  --color-brand-700: #4338ca;
+  --color-brand-900: #1e1b4b;
+
+  /* landing palette: a Bengaluru street at night */
+  --color-night: #070a1a;
+  --color-ink: #12163a;
+  --color-sodium: #ffb547;
+  --color-moon: #c7ceff;
+  --color-paper: #f2f3ff;
+  --color-go: #3ddc97;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  @apply bg-white font-sans text-[15px] text-zinc-900 antialiased dark:bg-zinc-950 dark:text-zinc-100;
+}
+
+/* Floating glass panel used across the map UI */
+@utility glass {
+  @apply rounded-xl border border-white/60 bg-white/75 shadow-xl shadow-zinc-900/10 backdrop-blur-xl backdrop-saturate-150 dark:border-white/10 dark:bg-zinc-900/65 dark:shadow-black/40;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.08),
+    0 12px 32px -12px rgb(0 0 0 / 0.35);
+}
+
+/* Glass on the dark landing page */
+@utility glass-night {
+  @apply border border-white/10 bg-white/[0.045] backdrop-blur-xl backdrop-saturate-150;
+  box-shadow:
+    inset 0 1px 0 0 rgb(255 255 255 / 0.09),
+    0 30px 60px -30px rgb(0 0 0 / 0.6);
+}
+
+.maplibregl-ctrl-attrib {
+  font-size: 10px;
+}
+
+/* ---------- landing effects ---------- */
+
+/* hexes switch on like street lights, rippling out from DSCE */
+@keyframes lamp-on {
+  0% { opacity: 0; }
+  60% { opacity: 1; filter: brightness(1.8); }
+  100% { opacity: 1; filter: brightness(1); }
+}
+.lamp-on {
+  opacity: 0;
+  animation: lamp-on 900ms ease-out forwards;
+}
+
+@keyframes marquee {
+  to { transform: translateX(-50%); }
+}
+.marquee {
+  animation: marquee 38s linear infinite;
+}
+
+/* the walker in the phone mockup: walks, stops at 45 %, then finishes */
+@keyframes walk {
+  0% { offset-distance: 0%; }
+  40% { offset-distance: 45%; }
+  62% { offset-distance: 45%; }
+  95%, 100% { offset-distance: 100%; }
+}
+.walker {
+  animation: walk 11s ease-in-out infinite;
+}
+@keyframes stop-alert {
+  0%, 44% { opacity: 0; transform: translateY(14px) scale(0.97); }
+  47%, 60% { opacity: 1; transform: none; }
+  64%, 100% { opacity: 0; transform: translateY(-6px); }
+}
+.stop-alert {
+  animation: stop-alert 11s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp-on { animation: none; opacity: 1; }
+  .marquee, .walker, .stop-alert { animation: none; }
+  .stop-alert { opacity: 1; }
+}
