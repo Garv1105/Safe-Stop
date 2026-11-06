@@ -75,6 +75,13 @@ export interface Report {
   daysAgo: number
 }
 
+/** A street piece inside one H3 cell. k: 0 main road, 1 residential/service, 2 footpath */
+export interface StreetPiece {
+  k: 0 | 1 | 2
+  h: string
+  c: [number, number][]
+}
+
 export interface AppData {
   cells: Cell[]
   routes: { pairs: RoutePair[]; lowScore: number }
@@ -83,4 +90,5 @@ export interface AppData {
   places: FC<PlaceProps>
   transit: FC<TransitProps>
   help: FC<HelpProps>
+  streets: { source: string; ways: StreetPiece[] }
 }

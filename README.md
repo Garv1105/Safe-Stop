@@ -19,6 +19,7 @@ py scripts/build_scores.py
 py scripts/make_synthetic_reports.py
 py scripts/fetch_routes.py
 py scripts/make_street_preview.py
+py scripts/make_street_scores.py
 ```
 
 ## Nicer base map (optional)

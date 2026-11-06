@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { AppData } from './types'
 
-const FILES = ['cells', 'routes', 'reports', 'lamps', 'places', 'transit', 'help'] as const
+const FILES = ['cells', 'routes', 'reports', 'lamps', 'places', 'transit', 'help', 'streets'] as const
 const URLS: Record<(typeof FILES)[number], string> = {
   cells: 'cells.json',
   routes: 'routes.json',
@@ -10,6 +10,7 @@ const URLS: Record<(typeof FILES)[number], string> = {
   places: 'places.geojson',
   transit: 'transit.geojson',
   help: 'help.geojson',
+  streets: 'streets.json',
 }
 
 let cache: Promise<AppData> | null = null

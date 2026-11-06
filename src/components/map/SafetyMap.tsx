@@ -8,10 +8,9 @@ import { cellToLatLng } from 'h3-js'
 import type { Map as MapLibreMap } from 'maplibre-gl'
 import { polishStyle, styleChain } from '../../lib/mapStyle'
 import { BAND_INFO, lowSegments, scoreColor, scoreLabel } from '../../lib/scoring'
-import type { AppData, Band, Cell, RoutePair } from '../../lib/types'
+import type { AppData, Band, Cell, RoutePair, StreetPiece } from '../../lib/types'
 
-export type LayerKey = 'lamps' | 'places' | 'transit' | 'help' | 'reports'
-
+export type LayerKey = 'streets' | 'hexes' | 'lamps' | 'places' | 'transit' | 'help' | 'reports'
 
 export const INITIAL_VIEW = { longitude: 77.5655, latitude: 12.9035, zoom: 13.4 }
 
@@ -55,13 +54,24 @@ export default function SafetyMap(p: Props) {
   const lastLevel = chain.length - 1
   const stepDown = () => setStyleLevel((l) => Math.min(l + 1, lastLevel))
   const [loaded, setLoaded] = useState(false)
-  // Hexes are drawn under the base map's roads and labels so streets stay readable.
+  // Hexes sit under the base map's roads; coloured streets sit above the roads but under labels.
   const [beforeId, setBeforeId] = useState<string | undefined>()
+  const [labelId, setLabelId] = useState<string | undefined>()
 
+  const polished = useRef('')
   const onStyleData = (e: { target: MapLibreMap }) => {
-    const layers = e.target.getStyle()?.layers ?? []
+    const style = e.target.getStyle()
+    const layers = style?.layers ?? []
+    // Recolour as soon as the style arrives (not on 'load', which waits for every tile). Once per style.
+    const key = `${style?.name}|${layers.length}|${darkRef.current}`
+    if (layers.length && polished.current !== key) {
+      polished.current = key
+      polishStyle(e.target, darkRef.current)
+    }
+    const label = layers.find((l) => l.type === 'symbol')?.id
     const road = layers.find((l) => l.type === 'line' && /road|highway|transportation|bridge|tunnel/.test(l.id))
-    setBeforeId((road ?? layers.find((l) => l.type === 'symbol'))?.id)
+    setBeforeId(road?.id ?? label)
+    setLabelId(label)
   }
 
   // Fall back to a plain background only if the style itself never arrives (offline),
@@ -104,24 +114,69 @@ export default function SafetyMap(p: Props) {
     // `beforeId` works at runtime in interleaved mode but isn't in deck's layer prop types
     const under = { beforeId } as object
     const openPlaces = p.data.places.features.filter((f) => f.properties.close >= BAND_INFO[band].openUntil)
-    const out: Layer[] = [
-      new H3HexagonLayer<Cell>({
-        id: 'hexes',
-        data: p.cells,
-        getHexagon: (d) => d.h3,
-        getFillColor: (d) => [...scoreColor(d.score[band]), 255],
-        getLineColor: p.dark ? [20, 20, 28, 120] : [255, 255, 255, 160],
-        lineWidthMinPixels: 1,
-        extruded: false,
-        opacity: p.pair ? 0.45 : 0.7,
-        ...under,
-        pickable: true,
-        autoHighlight: true,
-        highlightColor: [255, 255, 255, 90],
-        updateTriggers: { getFillColor: band },
-        transitions: { getFillColor: { duration: 600 } },
-      }),
-    ]
+    const showStreets = p.layers.has('streets')
+    const out: Layer[] = []
+    if (p.layers.has('hexes')) {
+      // No outlines: blocks blend into one soft surface. Lighter wash when streets carry the colour.
+      const alpha = showStreets ? (p.dark ? 0.04 : 0.14) : p.dark ? 0.2 : 0.45
+      out.push(
+        new H3HexagonLayer<Cell>({
+          id: 'hexes',
+          data: p.cells,
+          getHexagon: (d) => d.h3,
+          getFillColor: (d) => [...scoreColor(d.score[band]), 255],
+          stroked: false,
+          extruded: false,
+          opacity: p.pair ? alpha * 0.6 : alpha,
+          ...under,
+          pickable: true,
+          autoHighlight: true,
+          highlightColor: [255, 255, 255, 60],
+          updateTriggers: { getFillColor: band },
+          transitions: { getFillColor: { duration: 600 } },
+        }),
+      )
+    }
+    if (showStreets) {
+      const above = { beforeId: labelId } as object
+      const color = (d: StreetPiece, a: number) => {
+        const s = cellMap.get(d.h)?.score[band]
+        return (s === undefined ? [120, 120, 130, a] : [...scoreColor(s), a]) as [number, number, number, number]
+      }
+      // widths in metres so streets stay fine when zoomed out and get bolder when zoomed in
+      const width = (d: StreetPiece) => [20, 8, 4][d.k]
+      const dim = p.pair ? 0.45 : 1
+      const shared = { data: p.data.streets.ways, getPath: (d: StreetPiece) => d.c, widthUnits: 'meters' as const, widthMaxPixels: 8, capRounded: true, jointRounded: true, ...above }
+      // soft glow under main roads at night
+      if (p.dark)
+        out.push(
+          new PathLayer<StreetPiece>({
+            ...shared,
+            id: 'streets-glow',
+            data: p.data.streets.ways.filter((d) => d.k === 0),
+            getColor: (d) => color(d, Math.round(12 * dim)),
+            getWidth: 90,
+            widthMinPixels: 4,
+            widthMaxPixels: 26,
+            updateTriggers: { getColor: [band, cellMap, dim] },
+            transitions: { getColor: { duration: 600 } },
+          }),
+        )
+      out.push(
+        new PathLayer<StreetPiece>({
+          ...shared,
+          id: 'streets',
+          getColor: (d) => color(d, Math.round((p.dark ? (d.k === 2 ? 55 : 95) : d.k === 2 ? 150 : 215) * dim)),
+          getWidth: width,
+          widthMinPixels: 0.8,
+          pickable: true,
+          autoHighlight: true,
+          highlightColor: [255, 255, 255, 120],
+          updateTriggers: { getColor: [band, cellMap, dim] },
+          transitions: { getColor: { duration: 600 } },
+        }),
+      )
+    }
     if (p.selectedCell) {
       out.push(
         new H3HexagonLayer({
@@ -131,9 +186,9 @@ export default function SafetyMap(p: Props) {
           filled: false,
           stroked: true,
           extruded: false,
-          getLineColor: p.dark ? [255, 255, 255, 255] : [30, 27, 75, 255],
-          lineWidthMinPixels: 3,
-          ...under,
+          getLineColor: p.dark ? [255, 255, 255, 230] : [30, 27, 75, 255],
+          lineWidthMinPixels: 2.5,
+          ...({ beforeId: labelId } as object),
         }),
       )
     }
@@ -186,7 +241,7 @@ export default function SafetyMap(p: Props) {
             id: 'route-casing',
             data: [sel],
             getPath: (a: { coords: [number, number][] }) => a.coords,
-            getColor: [255, 255, 255, 255],
+            getColor: p.dark ? [7, 8, 12, 255] : [255, 255, 255, 255],
             getWidth: 11,
             widthUnits: 'pixels',
             capRounded: true,
@@ -246,13 +301,15 @@ export default function SafetyMap(p: Props) {
       )
     }
     return out
-  }, [p, reportPoints, beforeId])
+  }, [p, reportPoints, beforeId, labelId])
 
   const getTooltip = ({ object, layer }: PickingInfo) => {
     if (!object || !layer) return null
     const style = { className: 'deck-tooltip', style: { borderRadius: '8px', fontSize: '12px', padding: '6px 10px', fontFamily: 'Inter, system-ui, sans-serif' } }
-    if (layer.id === 'hexes') {
-      const s = (object as Cell).score[p.band]
+    if (layer.id === 'hexes' || layer.id === 'streets') {
+      const cell = layer.id === 'hexes' ? (object as Cell) : p.cellMap.get((object as StreetPiece).h)
+      if (!cell) return null
+      const s = cell.score[p.band]
       return { ...style, html: `<b>${Math.round(s)}</b> · ${scoreLabel(s)}<br/><span style="opacity:.7">Tap for details</span>` }
     }
     const props = (object as { properties?: { name?: string; kind?: string; cat?: string } }).properties
@@ -263,6 +320,7 @@ export default function SafetyMap(p: Props) {
 
   const onClick = (info: PickingInfo) => {
     if (info.layer?.id === 'hexes' && info.object) p.onSelectCell((info.object as Cell).h3)
+    else if (info.layer?.id === 'streets' && info.object) p.onSelectCell((info.object as StreetPiece).h)
     else if (info.layer?.id === 'routes-muted' && info.object) p.onSelectAlt((info.object as { id: string }).id)
   }
 
@@ -274,9 +332,6 @@ export default function SafetyMap(p: Props) {
       canvasContextAttributes={{ antialias: true }}
       onLoad={(e) => {
         setLoaded(true)
-        const map = e.target
-        polishStyle(map, darkRef.current)
-        map.on('style.load', () => polishStyle(map, darkRef.current)) // after the dark/light toggle
         if (import.meta.env.DEV) Object.assign(window, { __map: e.target }) // used by the demo test script only
       }}
       onError={(e) => !e.target.getStyle()?.layers?.length && stepDown()}

@@ -57,7 +57,7 @@ function ExplorerView({ data }: { data: AppData }) {
   const [band, setBand] = useState<Band>('evening')
   const [cells, setCells] = useState<Cell[]>(data.cells)
   const cellMap = useMemo(() => new Map(cells.map((c) => [c.h3, c])), [cells])
-  const [layers, setLayers] = useState<Set<LayerKey>>(new Set())
+  const [layers, setLayers] = useState<Set<LayerKey>>(new Set(['streets', 'hexes']))
   const [selectedCell, setSelectedCell] = useState<string | null>(null)
   const [pairId, setPairId] = useState(data.routes.pairs[0].id)
   const [routesShown, setRoutesShown] = useState(false)
@@ -185,14 +185,14 @@ function ExplorerView({ data }: { data: AppData }) {
           />
         </div>
         {!mobile && (
-          <div className="pointer-events-auto">
+          <div className="pointer-events-auto relative z-10">
             <MapControls layers={layers} onToggle={(k) => setLayers(toggle(layers, k))} dark={dark} onDark={() => setDark((d) => !d)} />
           </div>
         )}
       </div>
 
       {mobile && (
-        <div className="absolute top-[268px] right-3">
+        <div className="absolute top-[268px] right-3 z-10">
           <MapControls layers={layers} onToggle={(k) => setLayers(toggle(layers, k))} dark={dark} onDark={() => setDark((d) => !d)} />
         </div>
       )}
