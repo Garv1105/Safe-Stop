@@ -38,11 +38,15 @@ Police KML files go in `scripts/input/` (already downloaded from data.opencity.i
 ## Demo flow
 
 1. Landing → **Open the map**
-2. Switch **Evening → Night**: blocks change as shops close
-3. Click a red/orange block → **Why this score**
+2. Switch **Evening → Night**: street colours change as shops close
+3. Click a red/orange street or block → **Why this score**
 4. Press the blue arrow next to *Konanakunte Cross Metro* → compare **Shortest** vs **Safest**, select Safest
 5. **Report** → pick a category → **Submit anonymously** → toast shows the score change
 6. **Back** → **Start trip & share** → walker moves → "Stopped for 3 min" alert
 7. **i** button (top right) → About page: data sources and formula
 
-Base map tiles need internet. If they fail to load within 8 s the map falls back to a plain background; hexes, routes and panels still work.
+## Map views
+
+Streets are coloured by their block's score, over a faint tint of the H3 blocks. The **Layers** button (top right) switches **Coloured streets** and **Score blocks** on or off. A block gets an outline only when you click it. Dark and light mode use separate colour strengths (`src/components/map/SafetyMap.tsx`, `src/lib/mapStyle.ts`).
+
+Base map tiles need internet. If MapTiler fails the map uses OpenFreeMap, and if that fails within 15 s, a plain background; streets, blocks, routes and panels still work.
