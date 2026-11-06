@@ -29,3 +29,6 @@ dist-ssr
 # Python
 __pycache__/
 *.pyc
+
+# AI assistant notes (kept locally)
+CLAUDE.md
