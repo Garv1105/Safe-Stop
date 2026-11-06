@@ -2,6 +2,14 @@
 
 Night-time walking scores for every street block within 3 km of DSCE, Bengaluru. Frontend only. Data is precomputed into `public/data/` (see `public/data/README.md`).
 
+![Night-walk scores around DSCE: streets coloured by safety on a dark map](docs/screenshots/map-dark.jpg)
+
+| Route planner: shortest vs safest | Landing page |
+|---|---|
+| ![Shortest and safest walking routes from DSCE to Konanakunte Cross Metro](docs/screenshots/routes-light.jpg) | ![SafeStop landing page](docs/screenshots/landing.jpg) |
+
+*Community reports shown in the app are simulated demo data.*
+
 ## Run (PowerShell)
 
 ```powershell
