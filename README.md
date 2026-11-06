@@ -24,7 +24,7 @@ py scripts/make_street_scores.py
 
 ## Nicer base map (optional)
 
-Uses OpenFreeMap (no key) by default. For MapTiler, get a free key at maptiler.com and create `.env.local`:
+Uses OpenFreeMap (no key) by default. For MapTiler, get a free key at maptiler.com, copy `.env.example` to `.env.local` and fill it in:
 
 ```
 VITE_MAPTILER_KEY=your_key_here
